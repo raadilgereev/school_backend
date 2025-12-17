@@ -1,7 +1,10 @@
 # core/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Teacher, Review, SchoolInfo, Document
+from .models import Teacher, Review, SchoolInfo, Document, Product, ProductImage
+from django.utils.html import format_html
+from .models import Product, ProductImage
+
 
 # 8.1. Админ для учителей: список, поиск, фильтры, мини-превью фото
 @admin.register(Teacher)
@@ -77,3 +80,58 @@ class DocumentAdmin(admin.ModelAdmin):
         updated = queryset.update(is_public=False)
         self.message_user(request, f'Скрыто: {updated} документ(ов).')
     make_private.short_description = 'Сделать скрытыми'
+
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 0
+    fields = ('order', 'image', 'image_thumb', 'uploaded_at')
+    readonly_fields = ('image_thumb', 'uploaded_at')
+
+    def image_thumb(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="height:40px;border-radius:4px;" />', obj.image.url)
+        return '—'
+    image_thumb.short_description = 'Превью'
+
+
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 0
+    fields = ("order", "image", "image_thumb", "uploaded_at")
+    readonly_fields = ("image_thumb", "uploaded_at")
+
+    def image_thumb(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="height:40px;border-radius:4px;" />',
+                obj.image.url
+            )
+        return "—"
+    image_thumb.short_description = "Превью"
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ("name", "price", "size", "created_at", "updated_at")
+    search_fields = ("name", "comment", "size")
+    inlines = [ProductImageInline]
+
+
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ("product", "order", "image_thumb", "uploaded_at")
+    list_filter = ("uploaded_at",)
+    search_fields = ("product__name",)
+    ordering = ("product", "order", "id")
+    readonly_fields = ("image_thumb", "uploaded_at")
+
+    def image_thumb(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="height:60px;border-radius:4px;" />',
+                obj.image.url
+            )
+        return "—"
+    image_thumb.short_description = "Фото"

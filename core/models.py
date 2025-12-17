@@ -98,3 +98,58 @@ class Document(models.Model):
         if not self.original_name and self.file and hasattr(self.file, 'name'):
             self.original_name = os.path.basename(self.file.name)
         super().save(*args, **kwargs)
+
+
+from django.core.validators import MinValueValidator
+from django.utils.translation import gettext_lazy as _
+
+class Product(models.Model):
+    name = models.CharField(max_length=200, verbose_name=_("Название"))
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name=_("Цена"),
+    )
+    size = models.CharField(max_length=120, blank=True, verbose_name=_("Размер"))
+    comment = models.TextField(blank=True, verbose_name=_("Комментарий"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Создано"))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Обновлено"))
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Товар"
+        verbose_name_plural = "Товары"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name=_("Товар"),
+    )
+    image = models.ImageField(upload_to="products/%Y/%m/", verbose_name=_("Фото"))
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Порядок"))
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Загружено"))
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "Фото товара"
+        verbose_name_plural = "Фото товаров"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "order"],
+                name="uniq_product_image_order",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["product", "order"], name="idx_product_order"),
+        ]
+
+    def __str__(self) -> str:
+        filename = os.path.basename(self.image.name) if self.image else "image"
+        return f"{self.product_id}: {filename}"

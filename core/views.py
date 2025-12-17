@@ -5,8 +5,13 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
-from .models import Teacher, Review, SchoolInfo, Document
-from .serializers import TeacherSerializer, ReviewSerializer, SchoolInfoSerializer, DocumentSerializer
+from .models import Teacher, Review, SchoolInfo, Document, Product, ProductImage
+from .serializers import (
+    TeacherSerializer,
+    ReviewSerializer,
+    SchoolInfoSerializer,
+    DocumentSerializer,
+)
 import os
 
 # 6.1. TeacherViewSet — CRUD для учителей (чтение всем, запись только админу)
@@ -116,3 +121,54 @@ class DocumentViewSet(mixins.ListModelMixin,           # GET /documents/
         # Имя файла в Content-Disposition: берём original_name, если есть
         filename = doc.original_name or os.path.basename(doc.file.name)
         return FileResponse(doc.file.open('rb'), as_attachment=True, filename=filename)
+
+
+
+# app/views.py
+from rest_framework import mixins, viewsets, permissions
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db.models import Prefetch
+
+from .models import Product, ProductImage
+from .serializers import ProductSerializer, ProductImageSerializer
+
+
+class ProductViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = ProductSerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)  # 1) парсеры
+    queryset = Product.objects.all().prefetch_related("images")
+
+    def get_permissions(self):
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
+
+
+class ProductImageViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = ProductImageSerializer
+    parser_classes = (MultiPartParser, FormParser, JSONParser)  # 1) парсеры
+
+    def get_queryset(self):
+        qs = ProductImage.objects.select_related("product")
+        product_id = self.request.query_params.get("product")
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        return qs
+
+    def get_permissions(self):
+        if self.request.method in ("POST", "DELETE"):
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
