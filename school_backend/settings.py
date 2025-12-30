@@ -90,13 +90,16 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    "EXCEPTION_HANDLER": "core.exception_handler.custom_exception_handler",
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.ScopedRateThrottle',
         'rest_framework.throttling.AnonRateThrottle',
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'reviews': '20/hour',  # отправка отзывов
-        'anon': '200/hour',    # общий предел
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min", 
+        "reviews": "10/day",
+        "v1_merch": "120/min",
+        "v1_orders": "20/hour",
     },
 }
 
